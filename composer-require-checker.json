@@ -6,6 +6,9 @@
         "config_path",
         "storage_path",
 
+        "Illuminate\\Console\\Command",
+        "Illuminate\\Contracts\\JsonSchema\\JsonSchema",
+
         "PHPStan\\Reflection\\ClassReflection",
         "PHPStan\\Reflection\\ReflectionProvider",
 
@@ -24,6 +27,8 @@
         "Laravel\\Mcp\\Server",
         "Laravel\\Mcp\\Server\\McpServiceProvider",
         "Laravel\\Mcp\\Server\\Registrar",
-        "Laravel\\Mcp\\Server\\Tool"
+        "Laravel\\Mcp\\Server\\Tool",
+        "Laravel\\Mcp\\Server\\Tools\\Annotations\\IsIdempotent",
+        "Laravel\\Mcp\\Server\\Tools\\Annotations\\IsReadOnly"
     ]
 }

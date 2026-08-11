@@ -36,6 +36,7 @@ php artisan vendor:publish --tag=laravel-rector-config
 
 ## Rules
 
+- [`AddReadonlyToClassWithTraitRector`](#addreadonlytoclasswithtraitrector) — Declare a class readonly when it uses a configured trait
 - [`AddTypeToConstOnReadonlyClassRector`](#addtypetoconstonreadonlyclassrector) — Add type to constants on readonly classes regardless of final
 - [`EnforceControllerSuffixRector`](#enforcecontrollersuffixrector) — Controllers must be named with a Controller suffix
 - [`EnforceInvokableControllerRector`](#enforceinvokablecontrollerrector) — Controllers must be readonly and invokable, declaring __invoke and no other public method
@@ -47,6 +48,7 @@ Register the rules you want in `rector.php`:
 
 ```php
 use Rector\Config\RectorConfig;
+use ZeroToProd\LaravelRector\Rector\AddReadonlyToClassWithTraitRector;
 use ZeroToProd\LaravelRector\Rector\AddTypeToConstOnReadonlyClassRector;
 use ZeroToProd\LaravelRector\Rector\EnforceControllerSuffixRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
@@ -61,6 +63,7 @@ return RectorConfig::configure()
         __DIR__.'/tests',
     ])
     ->withRules([
+        AddReadonlyToClassWithTraitRector::class,
         AddTypeToConstOnReadonlyClassRector::class,
         EnforceControllerSuffixRector::class,
         EnforceInvokableControllerRector::class,
@@ -68,6 +71,64 @@ return RectorConfig::configure()
         ForbidTodoAnnotationRector::class,
         RenameParamToMatchTypeExactCaseRector::class,
     ]);
+```
+
+### `AddReadonlyToClassWithTraitRector`
+
+A trait can say what a class is. A class using `App\Helpers\DataModel` is a
+data model: it is handed its values and changes none of them, so it is
+declared readonly.
+
+Which traits say so is yours to name, with `traits`. A class using one of them
+and not declared readonly is declared readonly, and a class using none of them
+is left alone. The trait has to be used by the class itself: a trait reached
+through another trait or through a parent is not written in the file being
+read.
+
+A class PHP would refuse to declare readonly is left alone rather than broken:
+one declaring a property that is static, untyped, or given a default, and one
+that is abstract or extends another class, where the classes either side of it
+decide too.
+
+Configured with:
+
+```php
+->withConfiguredRule(AddReadonlyToClassWithTraitRector::class, [
+    'traits' => array (
+  0 => 'App\\Helpers\\DataModel',
+),
+])
+```
+
+```diff
+-class User
++readonly class User
+ {
+     use DataModel;
+
+     public string $name;
+ }
+```
+
+Configured with:
+
+```php
+->withConfiguredRule(AddReadonlyToClassWithTraitRector::class, [
+    'traits' => array (
+  0 => 'App\\Helpers\\DataModel',
+),
+    'leave_todo' => true,
+])
+```
+
+```diff
++// TODO: declare this class readonly: it uses App\Helpers\DataModel
+ class User
+ {
+     use DataModel;
+
+     public string $name;
+ }
 ```
 
 ### `AddTypeToConstOnReadonlyClassRector`

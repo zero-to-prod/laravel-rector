@@ -223,9 +223,12 @@ Register it with your agent:
 claude mcp add laravel-rector -- php artisan mcp:start laravel-rector
 ```
 
-Three tools are exposed:
+Four tools are exposed:
 
 - `readme` — this document.
+- `rules` — every rule the package ships: what it does, the code it rewrites
+  and how to register it, read from the rules themselves rather than written
+  out here. The same content as the Rules section above.
 - `api` — the exact signature of every public class, property and method.
   Anything unlisted is internal and may change in any release.
 - `install` — what `laravel-rector:install` does, without a prompt to answer.

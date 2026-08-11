@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace ZeroToProd\LaravelPackage;
+namespace ZeroToProd\LaravelRector;
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Mcp\Facades\Mcp;
 use Override;
-use ZeroToProd\LaravelPackage\Internal\Commands\InstallCommand;
-use ZeroToProd\LaravelPackage\Internal\Mcp\Server;
+use ZeroToProd\LaravelRector\Internal\Commands\InstallCommand;
+use ZeroToProd\LaravelRector\Internal\Mcp\Server;
 
 /** @internal */
-class LaravelPackageServiceProvider extends ServiceProvider
+class LaravelRectorServiceProvider extends ServiceProvider
 {
     /** @internal */
     #[Override]
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/laravel-package.php', 'laravel-package');
+        $this->mergeConfigFrom(__DIR__.'/../config/laravel-rector.php', 'laravel-rector');
     }
 
     /** @internal */
@@ -32,8 +32,8 @@ class LaravelPackageServiceProvider extends ServiceProvider
             ]);
 
             $this->publishes([
-                __DIR__.'/../config/laravel-package.php' => config_path('laravel-package.php'),
-            ], 'laravel-package-config');
+                __DIR__.'/../config/laravel-rector.php' => config_path('laravel-rector.php'),
+            ], 'laravel-rector-config');
         }
     }
 
@@ -45,10 +45,10 @@ class LaravelPackageServiceProvider extends ServiceProvider
         }
         // @codeCoverageIgnoreEnd
 
-        if (! Config::boolean('laravel-package.mcp.enabled', true)) {
+        if (! Config::boolean('laravel-rector.mcp.enabled', true)) {
             return;
         }
 
-        Mcp::local(Config::string('laravel-package.mcp.handle', 'laravel-package'), Server::class);
+        Mcp::local(Config::string('laravel-rector.mcp.handle', 'laravel-rector'), Server::class);
     }
 }

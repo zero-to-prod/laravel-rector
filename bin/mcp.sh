@@ -2,7 +2,7 @@
 
 set -e
 
-HANDLE=${MCP_HANDLE:-laravel-package}
+HANDLE=${MCP_HANDLE:-laravel-rector}
 COMMAND=${1:-list}
 
 case "$COMMAND" in

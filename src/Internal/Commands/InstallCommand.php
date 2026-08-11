@@ -2,30 +2,30 @@
 
 declare(strict_types=1);
 
-namespace ZeroToProd\LaravelPackage\Internal\Commands;
+namespace ZeroToProd\LaravelRector\Internal\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Config;
-use ZeroToProd\LaravelPackage\Internal\Configuration;
+use ZeroToProd\LaravelRector\Internal\Configuration;
 
 /**
  * Asks for every value the package can be configured with and writes them to
- * config/laravel-package.php.
+ * config/laravel-rector.php.
  *
  * @internal
  */
 class InstallCommand extends Command
 {
     /** @var string */
-    protected $signature = 'laravel-package:install';
+    protected $signature = 'laravel-rector:install';
 
     /** @var string */
     protected $description = 'Configure the package';
 
     public function handle(): int
     {
-        $default = Config::string('laravel-package.mcp.handle', 'laravel-package');
-        $mcp = $this->confirm('Register the MCP server that documents the package to coding agents?', Config::boolean('laravel-package.mcp.enabled', true));
+        $default = Config::string('laravel-rector.mcp.handle', 'laravel-rector');
+        $mcp = $this->confirm('Register the MCP server that documents the package to coding agents?', Config::boolean('laravel-rector.mcp.enabled', true));
         $handle = $mcp ? $this->text('The handle the MCP server is registered under', $default) : $default;
 
         $this->configuration($mcp, $handle);
@@ -35,7 +35,7 @@ class InstallCommand extends Command
         return self::SUCCESS;
     }
 
-    /** Writes the answers into config/laravel-package.php, keeping the shipped commentary. */
+    /** Writes the answers into config/laravel-rector.php, keeping the shipped commentary. */
     private function configuration(bool $mcp, string $handle): void
     {
         $file = Configuration::path();

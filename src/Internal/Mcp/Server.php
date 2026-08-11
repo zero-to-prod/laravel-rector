@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace ZeroToProd\LaravelPackage\Internal\Mcp;
+namespace ZeroToProd\LaravelRector\Internal\Mcp;
 
 use Laravel\Mcp\Server\Tool;
-use ZeroToProd\LaravelPackage\Internal\Mcp\Tools\Api;
-use ZeroToProd\LaravelPackage\Internal\Mcp\Tools\Install;
-use ZeroToProd\LaravelPackage\Internal\Mcp\Tools\Readme;
+use ZeroToProd\LaravelRector\Internal\Mcp\Tools\Api;
+use ZeroToProd\LaravelRector\Internal\Mcp\Tools\Install;
+use ZeroToProd\LaravelRector\Internal\Mcp\Tools\Readme;
 
 /** @internal */
 class Server extends \Laravel\Mcp\Server
 {
-    protected string $name = 'Laravel Package';
+    protected string $name = 'Laravel Rector';
 
     protected string $version = '1.0.0';
 

@@ -6,6 +6,7 @@ Opinionated Rector Rules for Laravel
 
 - PHP `^8.5`
 - [Laravel](https://laravel.com/) 13
+- [Rector](https://getrector.com/) `^2.5`, installed with this package
 
 ## Installation
 
@@ -29,6 +30,75 @@ To publish the configuration file by itself instead:
 
 ```bash
 php artisan vendor:publish --tag=laravel-rector-config
+```
+
+## Rules
+
+Register the rules you want in `rector.php`:
+
+```php
+use Rector\Config\RectorConfig;
+use ZeroToProd\LaravelRector\Rector\AddTypeToConstOnReadonlyClassRector;
+use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
+use ZeroToProd\LaravelRector\Rector\RenameParamToMatchTypeExactCaseRector;
+
+return RectorConfig::configure()
+    ->withPaths([
+        __DIR__.'/app',
+        __DIR__.'/routes',
+        __DIR__.'/tests',
+    ])
+    ->withRules([
+        AddTypeToConstOnReadonlyClassRector::class,
+        EnforceInvokableControllerRouteRector::class,
+        RenameParamToMatchTypeExactCaseRector::class,
+    ]);
+```
+
+### `AddTypeToConstOnReadonlyClassRector`
+
+Constants on a readonly class carry a type, whether the class is final or not.
+A constant a parent already declares is left alone: the type it is given there
+is the one that counts.
+
+```diff
+ readonly class SomeModel
+ {
+-    public const name = 'name';
++    public const string name = 'name';
+ }
+```
+
+### `EnforceInvokableControllerRouteRector`
+
+Controllers are invokable: a route maps to a class, never to a method on one.
+
+```diff
+-Route::get('/user', [UserShowController::class, '__invoke']);
++Route::get('/user', UserShowController::class);
+```
+
+Every other action that names a method — an array callable, an `@` string,
+`Route::resource()`, `Route::controller()` — has no invokable equivalent to
+rewrite it to, so the rule reports it as an error naming the file and line
+instead of changing it.
+
+### `RenameParamToMatchTypeExactCaseRector`
+
+A parameter typed with a class is named after that class, in the class's own
+casing. Methods that override a parent or interface declaration are left alone:
+their parameter names are part of a contract.
+
+```diff
+ final class SomeClass
+ {
+-    public function run(Apple $pie)
++    public function run(Apple $Apple)
+     {
+-        $food = $pie;
++        $food = $Apple;
+     }
+ }
 ```
 
 ## Agent development

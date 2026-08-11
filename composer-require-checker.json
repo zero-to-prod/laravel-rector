@@ -6,6 +6,15 @@
         "config_path",
         "storage_path",
 
+        "PHPStan\\Reflection\\ClassReflection",
+        "PHPStan\\Reflection\\ReflectionProvider",
+
+        "Rector\\Exception\\ShouldNotHappenException",
+        "Rector\\PHPStanStaticTypeMapper\\Enum\\TypeKind",
+        "Rector\\Rector\\AbstractRector",
+        "Rector\\Reflection\\ReflectionResolver",
+        "Rector\\StaticTypeMapper\\StaticTypeMapper",
+
         "Laravel\\Mcp\\Facades\\Mcp",
         "Laravel\\Mcp\\Request",
         "Laravel\\Mcp\\Response",

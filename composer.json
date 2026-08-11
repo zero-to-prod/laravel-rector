@@ -11,16 +11,18 @@
     ],
     "require": {
         "php": "^8.5",
-        "illuminate/support": "^13.0"
+        "illuminate/support": "^13.0",
+        "nikic/php-parser": "^5.8",
+        "phpstan/phpstan": "^2.2",
+        "rector/rector": "^2.5",
+        "symplify/rule-doc-generator-contracts": "^11.2"
     },
     "require-dev": {
         "laravel/mcp": "^0.9",
         "laravel/pint": "^1.30",
         "orchestra/testbench": "^11.0",
         "pestphp/pest": "^5.0",
-        "pestphp/pest-plugin-rector": "^5.0",
-        "phpstan/phpstan": "^2.2",
-        "rector/rector": "^2.5"
+        "pestphp/pest-plugin-rector": "^5.0"
     },
     "suggest": {
         "laravel/mcp": "Required by the MCP server that exposes this package's documentation to coding agents."

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Symplify\RuleDocGenerator\Contract\CodeSampleInterface;
 use Symplify\RuleDocGenerator\Contract\DocumentedRuleInterface;
 use ZeroToProd\LaravelRector\Rector\AddTypeToConstOnReadonlyClassRector;
+use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
 use ZeroToProd\LaravelRector\Rector\ForbidTodoAnnotationRector;
 use ZeroToProd\LaravelRector\Rector\RenameParamToMatchTypeExactCaseRector;
@@ -22,6 +23,7 @@ it('documents what it does with a before and after sample', function (Documented
 })->with([
     // The constructor dependencies play no part in the documentation
     fn (): AddTypeToConstOnReadonlyClassRector => new ReflectionClass(AddTypeToConstOnReadonlyClassRector::class)->newInstanceWithoutConstructor(),
+    fn (): EnforceInvokableControllerRector => new EnforceInvokableControllerRector,
     fn (): EnforceInvokableControllerRouteRector => new EnforceInvokableControllerRouteRector,
     fn (): ForbidTodoAnnotationRector => new ForbidTodoAnnotationRector,
     fn (): RenameParamToMatchTypeExactCaseRector => new ReflectionClass(RenameParamToMatchTypeExactCaseRector::class)->newInstanceWithoutConstructor(),

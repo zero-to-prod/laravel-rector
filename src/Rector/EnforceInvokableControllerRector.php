@@ -16,21 +16,30 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
 use ZeroToProd\LaravelRector\Concerns\LeavesTodo;
 
 /**
- * A controller is one action: it declares `__invoke` and nothing else public.
+ * A controller is one readonly action: it declares `__invoke`, nothing else public, and
+ * nothing about itself it can change.
  *
  * A class whose name ends in `Controller` is held to it. Every other public method is an
  * action hiding in a class that already has one, and there is nothing to rewrite it to —
  * where it belongs is a controller of its own, named for what it does. So each one is
  * reported as an error naming the file and line, as is a controller declaring no public
- * `__invoke` at all.
+ * `__invoke` at all, and one not declared readonly: an action holds the dependencies it was
+ * handed and changes nothing about itself between being constructed and being called.
  *
  * A constructor, a static `middleware()` declared for Laravel's `HasMiddleware`, and any
  * method that is not public are left alone: none of them is reachable as a route action.
  * An abstract class is left alone too — a base controller routes to nothing.
+ *
+ * Configured with `require_readonly` set to false, how a controller is declared stops being
+ * the rule's business and only the invokable half is enforced.
  */
 final class EnforceInvokableControllerRector extends AbstractRector implements ConfigurableRectorInterface, DocumentedRuleInterface
 {
-    use LeavesTodo;
+    use LeavesTodo {
+        configure as private configureLeavesTodo;
+    }
+
+    public const string REQUIRE_READONLY = 'require_readonly';
 
     /**
      * Public methods a controller may declare, none of which is reachable as a route action.
@@ -41,10 +50,76 @@ final class EnforceInvokableControllerRector extends AbstractRector implements C
         'middleware',
     ];
 
+    private const string NO_INVOKE = 'Controller declares no public __invoke. Controllers are invokable: name its action __invoke.';
+
+    private const string NOT_READONLY = 'Controller is not readonly. An action holds the dependencies it was handed and changes nothing about itself: declare it readonly.';
+
+    private bool $requireReadonly = true;
+
+    /** @param  mixed[]  $configuration */
+    public function configure(array $configuration): void
+    {
+        $this->configureLeavesTodo($configuration);
+
+        $this->requireReadonly = (bool) ($configuration[self::REQUIRE_READONLY] ?? true);
+    }
+
     public function getRuleDefinition(): RuleDefinition
     {
-        return new RuleDefinition('Controllers must be invokable, declaring __invoke and no other public method', [
+        return new RuleDefinition('Controllers must be readonly and invokable, declaring __invoke and no other public method', [
             new CodeSample(
+                <<<'CODE_SAMPLE'
+                    class UserController
+                    {
+                        public function show(User $User): View
+                        {
+                            return view('user.show', ['user' => $User]);
+                        }
+                    }
+                    CODE_SAMPLE,
+                <<<'CODE_SAMPLE'
+                    readonly class UserShowController
+                    {
+                        public function __invoke(User $User): View
+                        {
+                            return view('user.show', ['user' => $User]);
+                        }
+                    }
+                    CODE_SAMPLE,
+            ),
+            new ConfiguredCodeSample(
+                <<<'CODE_SAMPLE'
+                    readonly class UserController
+                    {
+                        public function __invoke(): View
+                        {
+                            return view('user.index');
+                        }
+
+                        public function show(User $User): View
+                        {
+                            return view('user.show', ['user' => $User]);
+                        }
+                    }
+                    CODE_SAMPLE,
+                <<<'CODE_SAMPLE'
+                    readonly class UserController
+                    {
+                        public function __invoke(): View
+                        {
+                            return view('user.index');
+                        }
+
+                        // TODO: Controller declares public method "show". Controllers are invokable: move it to a controller of its own, named __invoke.
+                        public function show(User $User): View
+                        {
+                            return view('user.show', ['user' => $User]);
+                        }
+                    }
+                    CODE_SAMPLE,
+                [self::LEAVE_TODO => true],
+            ),
+            new ConfiguredCodeSample(
                 <<<'CODE_SAMPLE'
                     class UserController
                     {
@@ -63,28 +138,7 @@ final class EnforceInvokableControllerRector extends AbstractRector implements C
                         }
                     }
                     CODE_SAMPLE,
-            ),
-            new ConfiguredCodeSample(
-                <<<'CODE_SAMPLE'
-                    class UserController
-                    {
-                        public function show(User $User): View
-                        {
-                            return view('user.show', ['user' => $User]);
-                        }
-                    }
-                    CODE_SAMPLE,
-                <<<'CODE_SAMPLE'
-                    class UserController
-                    {
-                        // TODO: Controller declares public method "show". Controllers are invokable: move it to a controller of its own, named __invoke.
-                        public function show(User $User): View
-                        {
-                            return view('user.show', ['user' => $User]);
-                        }
-                    }
-                    CODE_SAMPLE,
-                [self::LEAVE_TODO => true],
+                [self::REQUIRE_READONLY => false],
             ),
         ]);
     }
@@ -119,24 +173,49 @@ final class EnforceInvokableControllerRector extends AbstractRector implements C
                 $ClassMethod->name->toString(),
             );
 
-            if (! $this->leavesTodo()) {
-                throw new ShouldNotHappenException(sprintf('%s See %s', $violation, $this->describeLocation($ClassMethod)));
-            }
-
-            $hasChanged = $this->annotate($ClassMethod, $violation) instanceof Node || $hasChanged;
+            $hasChanged = $this->report($ClassMethod, $violation) || $hasChanged;
         }
 
-        if ($node->getMethod('__invoke')?->isPublic() === true) {
-            return $hasChanged ? $node : null;
+        foreach ($this->classViolations($node) as $violation) {
+            $hasChanged = $this->report($node, $violation) || $hasChanged;
         }
 
-        $violation = 'Controller declares no public __invoke. Controllers are invokable: name its action __invoke.';
+        return $hasChanged ? $node : null;
+    }
 
+    /**
+     * What the class itself gets wrong, rather than one of its methods.
+     *
+     * @return list<string>
+     */
+    private function classViolations(Class_ $Class_): array
+    {
+        $violations = [];
+
+        if ($Class_->getMethod('__invoke')?->isPublic() !== true) {
+            $violations[] = self::NO_INVOKE;
+        }
+
+        if ($this->requireReadonly && ! $Class_->isReadonly()) {
+            $violations[] = self::NOT_READONLY;
+        }
+
+        return $violations;
+    }
+
+    /**
+     * Whether the node was given a comment naming the violation, having been configured to
+     * leave one rather than report the violation as an error.
+     *
+     * @throws ShouldNotHappenException
+     */
+    private function report(Node $Node, string $violation): bool
+    {
         if (! $this->leavesTodo()) {
-            throw new ShouldNotHappenException(sprintf('%s See %s', $violation, $this->describeLocation($node)));
+            throw new ShouldNotHappenException(sprintf('%s See %s', $violation, $this->describeLocation($Node)));
         }
 
-        return $this->annotate($node, $violation) instanceof Node || $hasChanged ? $node : null;
+        return $this->annotate($Node, $violation) instanceof Node;
     }
 
     private function describeLocation(Node $Node): string

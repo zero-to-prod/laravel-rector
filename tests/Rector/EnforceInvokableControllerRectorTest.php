@@ -35,8 +35,11 @@ final class EnforceInvokableControllerRectorTest extends RectorTestCase
     public static function provideViolations(): Iterator
     {
         yield ['public_method_beside_invoke.php.inc', 'Controller declares public method "show". Controllers are invokable: move it to a controller of its own, named __invoke.'];
-        yield ['no_invoke_at_all.php.inc', 'Controller declares no public __invoke. Controllers are invokable: name its action __invoke.'];
         yield ['invoke_that_is_not_public.php.inc', 'Controller declares no public __invoke. Controllers are invokable: name its action __invoke.'];
+        yield ['not_readonly.php.inc', 'Controller is not readonly. An action holds the dependencies it was handed and changes nothing about itself: declare it readonly.'];
+
+        // The controller is not readonly either, and the action it is missing is reported first
+        yield ['no_invoke_at_all.php.inc', 'Controller declares no public __invoke. Controllers are invokable: name its action __invoke.'];
     }
 
     public function provideConfigFilePath(): string

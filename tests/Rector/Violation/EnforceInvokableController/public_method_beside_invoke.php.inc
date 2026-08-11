@@ -2,7 +2,7 @@
 
 namespace ZeroToProd\LaravelRector\Tests\Rector\Violation\EnforceInvokableController;
 
-class UserController
+readonly class UserController
 {
     public function __invoke(): string
     {

@@ -2,7 +2,7 @@
 
 namespace ZeroToProd\LaravelRector\Tests\Rector\Fixture\EnforceInvokableControllerLeaveTodo;
 
-class UserController
+readonly class UserController
 {
     public function __invoke(): string
     {
@@ -19,7 +19,7 @@ class UserController
 
 namespace ZeroToProd\LaravelRector\Tests\Rector\Fixture\EnforceInvokableControllerLeaveTodo;
 
-class UserController
+readonly class UserController
 {
     public function __invoke(): string
     {

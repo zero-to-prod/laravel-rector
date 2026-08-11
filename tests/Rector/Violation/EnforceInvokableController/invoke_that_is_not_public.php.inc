@@ -2,7 +2,7 @@
 
 namespace ZeroToProd\LaravelRector\Tests\Rector\Violation\EnforceInvokableController;
 
-class UserEditController
+readonly class UserEditController
 {
     protected function __invoke(string $id): string
     {

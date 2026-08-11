@@ -37,7 +37,7 @@ php artisan vendor:publish --tag=laravel-rector-config
 ## Rules
 
 - [`AddTypeToConstOnReadonlyClassRector`](#addtypetoconstonreadonlyclassrector) — Add type to constants on readonly classes regardless of final
-- [`EnforceInvokableControllerRector`](#enforceinvokablecontrollerrector) — Controllers must be invokable, declaring __invoke and no other public method
+- [`EnforceInvokableControllerRector`](#enforceinvokablecontrollerrector) — Controllers must be readonly and invokable, declaring __invoke and no other public method
 - [`EnforceInvokableControllerRouteRector`](#enforceinvokablecontrollerrouterector) — Routes must map to an invokable controller class, never to a method
 - [`ForbidTodoAnnotationRector`](#forbidtodoannotationrector) — Comments must not carry a TODO annotation
 - [`RenameParamToMatchTypeExactCaseRector`](#renameparamtomatchtypeexactcaserector) — Rename param to match class type hint exactly (PascalCase)
@@ -100,22 +100,28 @@ Configured with:
 
 ### `EnforceInvokableControllerRector`
 
-A controller is one action: it declares `__invoke` and nothing else public.
+A controller is one readonly action: it declares `__invoke`, nothing else
+public, and nothing about itself it can change.
 
 A class whose name ends in `Controller` is held to it. Every other public
 method is an action hiding in a class that already has one, and there is
 nothing to rewrite it to — where it belongs is a controller of its own,
 named for what it does. So each one is reported as an error naming the file
-and line, as is a controller declaring no public `__invoke` at all.
+and line, as is a controller declaring no public `__invoke` at all, and one
+not declared readonly: an action holds the dependencies it was handed and
+changes nothing about itself between being constructed and being called.
 
 A constructor, a static `middleware()` declared for Laravel's `HasMiddleware`,
 and any method that is not public are left alone: none of them is reachable as
 a route action. An abstract class is left alone too — a base controller
 routes to nothing.
 
+Configured with `require_readonly` set to false, how a controller is declared
+stops being the rule's business and only the invokable half is enforced.
+
 ```diff
 -class UserController
-+class UserShowController
++readonly class UserShowController
  {
 -    public function show(User $User): View
 +    public function __invoke(User $User): View
@@ -134,10 +140,35 @@ Configured with:
 ```
 
 ```diff
- class UserController
+ readonly class UserController
  {
+     public function __invoke(): View
+     {
+         return view('user.index');
+     }
+
 +    // TODO: Controller declares public method "show". Controllers are invokable: move it to a controller of its own, named __invoke.
      public function show(User $User): View
+     {
+         return view('user.show', ['user' => $User]);
+     }
+ }
+```
+
+Configured with:
+
+```php
+->withConfiguredRule(EnforceInvokableControllerRector::class, [
+    'require_readonly' => false,
+])
+```
+
+```diff
+-class UserController
++class UserShowController
+ {
+-    public function show(User $User): View
++    public function __invoke(User $User): View
      {
          return view('user.show', ['user' => $User]);
      }

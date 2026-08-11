@@ -2,9 +2,9 @@
 
 namespace ZeroToProd\LaravelRector\Tests\Rector\Fixture\EnforceInvokableController;
 
-class UserShowController
+readonly class UserShowController
 {
-    public function __construct(private readonly Users $Users) {}
+    public function __construct(private Users $Users) {}
 
     public static function middleware(): array
     {

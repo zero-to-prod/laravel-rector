@@ -7,6 +7,7 @@
         "storage_path",
 
         "Illuminate\\Console\\Command",
+        "Illuminate\\Contracts\\Console\\Kernel",
         "Illuminate\\Contracts\\JsonSchema\\JsonSchema",
 
         "PHPStan\\Reflection\\ClassReflection",

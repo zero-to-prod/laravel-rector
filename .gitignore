@@ -8,3 +8,5 @@ composer.lock
 .DS_Store
 .idea
 .claude/settings.local.json
+/tests/Fixtures/Application/bootstrap/cache/*
+!/tests/Fixtures/Application/bootstrap/cache/.gitkeep

@@ -37,6 +37,7 @@ php artisan vendor:publish --tag=laravel-rector-config
 ## Rules
 
 - [`AddTypeToConstOnReadonlyClassRector`](#addtypetoconstonreadonlyclassrector) — Add type to constants on readonly classes regardless of final
+- [`EnforceControllerSuffixRector`](#enforcecontrollersuffixrector) — Controllers must be named with a Controller suffix
 - [`EnforceInvokableControllerRector`](#enforceinvokablecontrollerrector) — Controllers must be readonly and invokable, declaring __invoke and no other public method
 - [`EnforceInvokableControllerRouteRector`](#enforceinvokablecontrollerrouterector) — Routes must map to an invokable controller class, never to a method
 - [`ForbidTodoAnnotationRector`](#forbidtodoannotationrector) — Comments must not carry a TODO annotation
@@ -47,6 +48,7 @@ Register the rules you want in `rector.php`:
 ```php
 use Rector\Config\RectorConfig;
 use ZeroToProd\LaravelRector\Rector\AddTypeToConstOnReadonlyClassRector;
+use ZeroToProd\LaravelRector\Rector\EnforceControllerSuffixRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
 use ZeroToProd\LaravelRector\Rector\ForbidTodoAnnotationRector;
@@ -60,6 +62,7 @@ return RectorConfig::configure()
     ])
     ->withRules([
         AddTypeToConstOnReadonlyClassRector::class,
+        EnforceControllerSuffixRector::class,
         EnforceInvokableControllerRector::class,
         EnforceInvokableControllerRouteRector::class,
         ForbidTodoAnnotationRector::class,
@@ -95,6 +98,61 @@ Configured with:
  {
 +    // TODO: type this constant as string
      public const name = 'name';
+ }
+```
+
+### `EnforceControllerSuffixRector`
+
+A controller says so in its name: the class a route maps to ends in
+`Controller`, so the class behind `GET /user` is `UserShowController`.
+
+The application's own routes decide what a controller is. The rule asks the
+router what every registered route maps to, booting the application to do it,
+so a class is held to the convention because a request reaches it rather than
+because of where it is filed. A class no route maps to is left alone, and so
+is a route mapping to a closure: it names no class to hold to anything.
+
+Renaming a class moves every reference to it — the route, the tests, the
+container bindings — and none of them is in the file that declares it, so
+there is nothing here to rewrite. The class is reported as an error naming the
+file and line, and the rename is yours to make.
+
+The application is booted from the directory Rector was run in, which is the
+application root. Configured with `base_path`, it is booted from there
+instead.
+
+```diff
+-// Route::get('/user', UserShow::class);
++// Route::get('/user', UserShowController::class);
+
+-readonly class UserShow
++readonly class UserShowController
+ {
+     public function __invoke(User $User): View
+     {
+         return view('user.show', ['user' => $User]);
+     }
+ }
+```
+
+Configured with:
+
+```php
+->withConfiguredRule(EnforceControllerSuffixRector::class, [
+    'leave_todo' => true,
+])
+```
+
+```diff
+ // Route::get('/user', UserShow::class);
+
++// TODO: Class "UserShow" is the controller for route "GET /user" and does not end in Controller. Rename it UserShowController.
+ readonly class UserShow
+ {
+     public function __invoke(User $User): View
+     {
+         return view('user.show', ['user' => $User]);
+     }
  }
 ```
 

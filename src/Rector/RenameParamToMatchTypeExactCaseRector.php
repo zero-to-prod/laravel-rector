@@ -12,12 +12,15 @@ use PhpParser\Node\Param;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Function_;
 use PHPStan\Reflection\ClassReflection;
+use Rector\Contract\Rector\ConfigurableRectorInterface;
 use Rector\Rector\AbstractRector;
 use Rector\Reflection\ReflectionResolver;
 use Symplify\RuleDocGenerator\Contract\DocumentedRuleInterface;
 use Symplify\RuleDocGenerator\Exception\PoorDocumentationException;
 use Symplify\RuleDocGenerator\ValueObject\CodeSample\CodeSample;
+use Symplify\RuleDocGenerator\ValueObject\CodeSample\ConfiguredCodeSample;
 use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
+use ZeroToProd\LaravelRector\Concerns\LeavesTodo;
 
 /**
  * A parameter typed with a class is named after that class, in the class's own casing.
@@ -25,8 +28,10 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
  * Methods that override a parent or interface declaration are left alone: their parameter
  * names are part of a contract this rule has no business rewriting.
  */
-final class RenameParamToMatchTypeExactCaseRector extends AbstractRector implements DocumentedRuleInterface
+final class RenameParamToMatchTypeExactCaseRector extends AbstractRector implements ConfigurableRectorInterface, DocumentedRuleInterface
 {
+    use LeavesTodo;
+
     public function __construct(
         private readonly ReflectionResolver $reflectionResolver,
     ) {}
@@ -54,6 +59,28 @@ final class RenameParamToMatchTypeExactCaseRector extends AbstractRector impleme
                         }
                     }
                     CODE_SAMPLE,
+            ),
+            new ConfiguredCodeSample(
+                <<<'CODE_SAMPLE'
+                    final class SomeClass
+                    {
+                        public function run(Apple $pie)
+                        {
+                            $food = $pie;
+                        }
+                    }
+                    CODE_SAMPLE,
+                <<<'CODE_SAMPLE'
+                    final class SomeClass
+                    {
+                        // TODO: rename $pie to $Apple, after its type
+                        public function run(Apple $pie)
+                        {
+                            $food = $pie;
+                        }
+                    }
+                    CODE_SAMPLE,
+                [self::LEAVE_TODO => true],
             ),
         ]);
     }
@@ -100,6 +127,12 @@ final class RenameParamToMatchTypeExactCaseRector extends AbstractRector impleme
             }
 
             if ($this->hasConflictingParam($node, $expectedName, $param)) {
+                continue;
+            }
+
+            if ($this->leavesTodo()) {
+                $hasChanged = $this->annotate($node, sprintf('rename $%s to $%s, after its type', $currentName, $expectedName)) instanceof Node || $hasChanged;
+
                 continue;
             }
 

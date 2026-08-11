@@ -32,7 +32,14 @@ To publish the configuration file by itself instead:
 php artisan vendor:publish --tag=laravel-rector-config
 ```
 
+<!-- rules:start -->
+
 ## Rules
+
+- [`AddTypeToConstOnReadonlyClassRector`](#addtypetoconstonreadonlyclassrector) — Add type to constants on readonly classes regardless of final
+- [`EnforceInvokableControllerRouteRector`](#enforceinvokablecontrollerrouterector) — Routes must map to an invokable controller class, never to a method
+- [`ForbidTodoAnnotationRector`](#forbidtodoannotationrector) — Comments must not carry a TODO annotation
+- [`RenameParamToMatchTypeExactCaseRector`](#renameparamtomatchtypeexactcaserector) — Rename param to match class type hint exactly (PascalCase)
 
 Register the rules you want in `rector.php`:
 
@@ -40,6 +47,7 @@ Register the rules you want in `rector.php`:
 use Rector\Config\RectorConfig;
 use ZeroToProd\LaravelRector\Rector\AddTypeToConstOnReadonlyClassRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
+use ZeroToProd\LaravelRector\Rector\ForbidTodoAnnotationRector;
 use ZeroToProd\LaravelRector\Rector\RenameParamToMatchTypeExactCaseRector;
 
 return RectorConfig::configure()
@@ -51,6 +59,7 @@ return RectorConfig::configure()
     ->withRules([
         AddTypeToConstOnReadonlyClassRector::class,
         EnforceInvokableControllerRouteRector::class,
+        ForbidTodoAnnotationRector::class,
         RenameParamToMatchTypeExactCaseRector::class,
     ]);
 ```
@@ -58,6 +67,7 @@ return RectorConfig::configure()
 ### `AddTypeToConstOnReadonlyClassRector`
 
 Constants on a readonly class carry a type, whether the class is final or not.
+
 A constant a parent already declares is left alone: the type it is given there
 is the one that counts.
 
@@ -69,25 +79,79 @@ is the one that counts.
  }
 ```
 
+Configured with:
+
+```php
+->withConfiguredRule(AddTypeToConstOnReadonlyClassRector::class, [
+    'leave_todo' => true,
+])
+```
+
+```diff
+ readonly class SomeModel
+ {
++    // TODO: type this constant as string
+     public const name = 'name';
+ }
+```
+
 ### `EnforceInvokableControllerRouteRector`
 
 Controllers are invokable: a route maps to a class, never to a method on one.
+
+`[Controller::class, '__invoke']` is the same route written the long way, so
+it is rewritten to `Controller::class`. Every other action that names a method
+— an array callable, an `@` string, `Route::resource()`,
+`Route::controller()` — has no invokable equivalent to rewrite it to and is
+reported as an error instead.
 
 ```diff
 -Route::get('/user', [UserShowController::class, '__invoke']);
 +Route::get('/user', UserShowController::class);
 ```
 
-Every other action that names a method — an array callable, an `@` string,
-`Route::resource()`, `Route::controller()` — has no invokable equivalent to
-rewrite it to, so the rule reports it as an error naming the file and line
-instead of changing it.
+Configured with:
+
+```php
+->withConfiguredRule(EnforceInvokableControllerRouteRector::class, [
+    'leave_todo' => true,
+])
+```
+
+```diff
++// TODO: Route action names __invoke. Pass the controller class itself.
+ Route::get('/user', [UserShowController::class, '__invoke']);
+```
+
+### `ForbidTodoAnnotationRector`
+
+A TODO annotation is a note that the work is not finished, left where nothing
+tracks it.
+
+There is nothing to rewrite it to, so every comment carrying one is reported
+as an error naming the file and line: finish the work, or record it where the
+team can see it.
+
+Every casing is caught, in a line comment, a hash comment or a docblock. The
+annotation is read from the file's comment tokens, so one written inside a
+string or a heredoc is not a violation.
+
+Configured with `leave_todo`, the rule reports nothing at all: the note it
+would leave is the comment it just found.
+
+```diff
+-// @TODO handle the empty case
+-return $items[0];
++return $items[0] ?? null;
+```
 
 ### `RenameParamToMatchTypeExactCaseRector`
 
 A parameter typed with a class is named after that class, in the class's own
-casing. Methods that override a parent or interface declaration are left alone:
-their parameter names are part of a contract.
+casing.
+
+Methods that override a parent or interface declaration are left alone: their
+parameter names are part of a contract this rule has no business rewriting.
 
 ```diff
  final class SomeClass
@@ -100,6 +164,46 @@ their parameter names are part of a contract.
      }
  }
 ```
+
+Configured with:
+
+```php
+->withConfiguredRule(RenameParamToMatchTypeExactCaseRector::class, [
+    'leave_todo' => true,
+])
+```
+
+```diff
+ final class SomeClass
+ {
++    // TODO: rename $pie to $Apple, after its type
+     public function run(Apple $pie)
+     {
+         $food = $pie;
+     }
+ }
+```
+
+<!-- rules:end -->
+
+## Options
+
+Every rule takes one option, `leave_todo`. Configured with it, a rule stops
+changing the code and stops reporting an error: it leaves a comment naming the
+violation where it found it, so the change stays a decision for whoever reads
+the file.
+
+```php
+->withConfiguredRule(EnforceInvokableControllerRouteRector::class, [
+    EnforceInvokableControllerRouteRector::LEAVE_TODO => true,
+])
+```
+
+The comment is left on the statement the violation sits on, and running twice
+leaves one comment rather than two, so the option is safe to run in a loop
+while the todos are worked off. `ForbidTodoAnnotationRector` is the exception
+that proves the rule: configured this way it reports nothing at all, because
+the note it would leave is the comment it just found.
 
 ## Agent development
 
@@ -142,11 +246,17 @@ Point the handle somewhere else, or turn the server off, in
 ## Development
 
 ```bash
-composer check   # lint, rector, phpstan, 100% coverage, bc-check — mutates nothing
-composer fix     # rector then pint
+composer check   # lint, rector, phpstan, docs, 100% coverage, bc-check — mutates nothing
+composer fix     # rector, pint, then the docs
 composer mcp list                      # the server's tools
 composer mcp call api '{}'             # call one
 ```
+
+The Rules section above is generated from the rules themselves: their class
+names, class doc comments and rule definitions. Everything between the
+`rules:start` and `rules:end` markers is written by `composer docs`, and
+`composer docs-check` fails when it no longer matches. Document a rule by
+writing its doc comment and its `getRuleDefinition()`, then run `composer fix`.
 
 `composer check` requires a coverage driver (Xdebug or pcov); without one Pest
 cannot satisfy the `--min=100` gate.

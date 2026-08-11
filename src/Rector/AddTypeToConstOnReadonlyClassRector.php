@@ -20,12 +20,15 @@ use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Class_;
 use PHPStan\Reflection\ClassReflection;
 use PHPStan\Reflection\ReflectionProvider;
+use Rector\Contract\Rector\ConfigurableRectorInterface;
 use Rector\PHPStanStaticTypeMapper\Enum\TypeKind;
 use Rector\Rector\AbstractRector;
 use Rector\StaticTypeMapper\StaticTypeMapper;
 use Symplify\RuleDocGenerator\Contract\DocumentedRuleInterface;
 use Symplify\RuleDocGenerator\ValueObject\CodeSample\CodeSample;
+use Symplify\RuleDocGenerator\ValueObject\CodeSample\ConfiguredCodeSample;
 use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
+use ZeroToProd\LaravelRector\Concerns\LeavesTodo;
 
 /**
  * Constants on a readonly class carry a type, whether the class is final or not.
@@ -33,8 +36,10 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
  * A constant a parent already declares is left alone: the type it is given there is the
  * one that counts.
  */
-final class AddTypeToConstOnReadonlyClassRector extends AbstractRector implements DocumentedRuleInterface
+final class AddTypeToConstOnReadonlyClassRector extends AbstractRector implements ConfigurableRectorInterface, DocumentedRuleInterface
 {
+    use LeavesTodo;
+
     public function __construct(
         private readonly ReflectionProvider $reflectionProvider,
         private readonly StaticTypeMapper $staticTypeMapper,
@@ -56,6 +61,22 @@ final class AddTypeToConstOnReadonlyClassRector extends AbstractRector implement
                         public const string name = 'name';
                     }
                     CODE_SAMPLE,
+            ),
+            new ConfiguredCodeSample(
+                <<<'CODE_SAMPLE'
+                    readonly class SomeModel
+                    {
+                        public const name = 'name';
+                    }
+                    CODE_SAMPLE,
+                <<<'CODE_SAMPLE'
+                    readonly class SomeModel
+                    {
+                        // TODO: type this constant as string
+                        public const name = 'name';
+                    }
+                    CODE_SAMPLE,
+                [self::LEAVE_TODO => true],
             ),
         ]);
     }
@@ -117,7 +138,15 @@ final class AddTypeToConstOnReadonlyClassRector extends AbstractRector implement
                 continue;
             }
 
-            $ClassConst->type = current($valueTypes);
+            $Type = current($valueTypes);
+
+            if ($this->leavesTodo()) {
+                $hasChanged = $this->annotate($ClassConst, sprintf('type this constant as %s', $Type->toString())) instanceof Node || $hasChanged;
+
+                continue;
+            }
+
+            $ClassConst->type = $Type;
             $hasChanged = true;
         }
 

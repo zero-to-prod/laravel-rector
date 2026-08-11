@@ -15,11 +15,15 @@ use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Scalar\String_;
+use PhpParser\Node\Stmt\Expression;
+use Rector\Contract\Rector\ConfigurableRectorInterface;
 use Rector\Exception\ShouldNotHappenException;
 use Rector\Rector\AbstractRector;
 use Symplify\RuleDocGenerator\Contract\DocumentedRuleInterface;
 use Symplify\RuleDocGenerator\ValueObject\CodeSample\CodeSample;
+use Symplify\RuleDocGenerator\ValueObject\CodeSample\ConfiguredCodeSample;
 use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
+use ZeroToProd\LaravelRector\Concerns\LeavesTodo;
 
 /**
  * Controllers are invokable: a route maps to a class, never to a method on one.
@@ -29,8 +33,10 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
  * callable, an `@` string, `Route::resource()`, `Route::controller()` — has no invokable
  * equivalent to rewrite it to and is reported as an error instead.
  */
-final class EnforceInvokableControllerRouteRector extends AbstractRector implements DocumentedRuleInterface
+final class EnforceInvokableControllerRouteRector extends AbstractRector implements ConfigurableRectorInterface, DocumentedRuleInterface
 {
+    use LeavesTodo;
+
     /**
      * Route registration methods, mapped to the argument position holding the action.
      */
@@ -45,6 +51,11 @@ final class EnforceInvokableControllerRouteRector extends AbstractRector impleme
         'match' => 2,
         'fallback' => 0,
     ];
+
+    /**
+     * The one violation the rule can rewrite, so the only one it reports as a comment alone.
+     */
+    private const string NAMES_INVOKE = 'Route action names __invoke. Pass the controller class itself.';
 
     /**
      * Route registration methods that map many methods of one controller by definition.
@@ -72,72 +83,131 @@ final class EnforceInvokableControllerRouteRector extends AbstractRector impleme
                     Route::get('/user', UserShowController::class);
                     CODE_SAMPLE,
             ),
+            new ConfiguredCodeSample(
+                <<<'CODE_SAMPLE'
+                    Route::get('/user', [UserShowController::class, '__invoke']);
+                    CODE_SAMPLE,
+                <<<'CODE_SAMPLE'
+                    // TODO: Route action names __invoke. Pass the controller class itself.
+                    Route::get('/user', [UserShowController::class, '__invoke']);
+                    CODE_SAMPLE,
+                [self::LEAVE_TODO => true],
+            ),
         ]);
     }
 
     /** @return array<class-string<Node>> */
     public function getNodeTypes(): array
     {
-        return [StaticCall::class, MethodCall::class];
+        // A comment belongs to a statement, so the todo is left on the one registering the route
+        return [Expression::class, StaticCall::class, MethodCall::class];
     }
 
     /**
-     * @param  StaticCall|MethodCall  $node
-     *
      * @throws ShouldNotHappenException
      */
-    public function refactor(Node $node): StaticCall|MethodCall|null
+    public function refactor(Node $node): ?Node
     {
-        $method_name = $this->getName($node->name);
+        if ($node instanceof Expression) {
+            return $this->leavesTodo() ? $this->annotateRoute($node) : null;
+        }
+
+        /** @var StaticCall|MethodCall $node */
+        return $this->leavesTodo() ? null : $this->refactorRoute($node);
+    }
+
+    /**
+     * The statement carrying a comment for the first route it registers against this rule.
+     */
+    private function annotateRoute(Expression $Expression): ?Expression
+    {
+        $violation = null;
+
+        $this->traverseNodesWithCallable($Expression->expr, function (Node $Node) use (&$violation): null {
+            if ($violation === null && ($Node instanceof StaticCall || $Node instanceof MethodCall)) {
+                $Inspection = $this->inspect($Node);
+                $violation = is_array($Inspection) ? self::NAMES_INVOKE : $Inspection;
+            }
+
+            return null;
+        });
+
+        return is_string($violation) ? $this->annotate($Expression, $violation) : null;
+    }
+
+    /**
+     * @throws ShouldNotHappenException
+     */
+    private function refactorRoute(StaticCall|MethodCall $Node): StaticCall|MethodCall|null
+    {
+        $Inspection = $this->inspect($Node);
+
+        if (is_string($Inspection)) {
+            throw new ShouldNotHappenException(sprintf('%s See %s', $Inspection, $this->describeLocation($Node)));
+        }
+
+        if ($Inspection === null) {
+            return null;
+        }
+
+        [$Arg, $Action] = $Inspection;
+
+        $Arg->value = $Action;
+
+        return $Node;
+    }
+
+    /**
+     * The argument to rewrite and the invokable controller to write there, a violation with no
+     * rewrite to make, or null when the call registers no route this rule speaks about.
+     *
+     * @return array{Arg, Expr}|string|null
+     */
+    private function inspect(StaticCall|MethodCall $Node): array|string|null
+    {
+        $method_name = $this->getName($Node->name);
         if (! is_string($method_name)) {
             return null;
         }
 
-        if (in_array($method_name, self::METHOD_MAPPING_REGISTRARS, true) && $this->isRouteRegistration($node)) {
-            throw new ShouldNotHappenException(
-                sprintf(
-                    'Route::%s() maps a controller\'s methods. Register one route per invokable controller instead. See %s',
-                    $method_name,
-                    $this->describeLocation($node),
-                )
+        if (in_array($method_name, self::METHOD_MAPPING_REGISTRARS, true) && $this->isRouteRegistration($Node)) {
+            return sprintf(
+                'Route::%s() maps a controller\'s methods. Register one route per invokable controller instead.',
+                $method_name,
             );
         }
 
         $position = self::ACTION_ARGUMENT_POSITIONS[$method_name] ?? null;
-        if ($position === null || ! $this->isRouteRegistration($node)) {
+        if ($position === null || ! $this->isRouteRegistration($Node)) {
             return null;
         }
 
-        $Arg = $node->args[$position] ?? null;
+        $Arg = $Node->args[$position] ?? null;
         if (! $Arg instanceof Arg) {
             return null;
         }
 
-        $Action = $this->refactorAction($Arg->value, $node);
-        if (! $Action instanceof Expr) {
-            return null;
+        $Action = $this->resolveAction($Arg->value);
+
+        if (is_string($Action)) {
+            return $Action;
         }
 
-        $Arg->value = $Action;
-
-        return $node;
+        return $Action instanceof Expr ? [$Arg, $Action] : null;
     }
 
     /**
-     * @throws ShouldNotHappenException
+     * The invokable controller to pass instead, the violation when the action names a method,
+     * or null when the action is nothing this rule speaks about.
      */
-    private function refactorAction(Expr $Expr, StaticCall|MethodCall $Node): ?Expr
+    private function resolveAction(Expr $Expr): Expr|string|null
     {
         if ($Expr instanceof Closure || $Expr instanceof ArrowFunction) {
             return null;
         }
 
         if ($Expr instanceof String_) {
-            if (! str_contains($Expr->value, '@')) {
-                return null;
-            }
-
-            throw new ShouldNotHappenException($this->violation($Expr->value, $Node));
+            return str_contains($Expr->value, '@') ? $this->violation($Expr->value) : null;
         }
 
         if (! $Expr instanceof Array_) {
@@ -155,7 +225,7 @@ final class EnforceInvokableControllerRouteRector extends AbstractRector impleme
         }
 
         if ($MethodItem->value->value !== '__invoke') {
-            throw new ShouldNotHappenException($this->violation($MethodItem->value->value, $Node));
+            return $this->violation($MethodItem->value->value);
         }
 
         if (! $ControllerItem->value instanceof ClassConstFetch) {
@@ -183,12 +253,11 @@ final class EnforceInvokableControllerRouteRector extends AbstractRector impleme
         return $Root instanceof StaticCall && $this->isName($Root->class, Route::class);
     }
 
-    private function violation(string $method_name, StaticCall|MethodCall $Node): string
+    private function violation(string $method_name): string
     {
         return sprintf(
-            'Route action maps to method "%s". Controllers are invokable: pass the controller class itself. See %s',
+            'Route action maps to method "%s". Controllers are invokable: pass the controller class itself.',
             $method_name,
-            $this->describeLocation($Node),
         );
     }
 

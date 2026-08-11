@@ -9,8 +9,11 @@
         "PHPStan\\Reflection\\ClassReflection",
         "PHPStan\\Reflection\\ReflectionProvider",
 
+        "Rector\\Contract\\Rector\\ConfigurableRectorInterface",
         "Rector\\Exception\\ShouldNotHappenException",
+        "Rector\\NodeTypeResolver\\Node\\AttributeKey",
         "Rector\\PHPStanStaticTypeMapper\\Enum\\TypeKind",
+        "Rector\\PhpParser\\Node\\FileNode",
         "Rector\\Rector\\AbstractRector",
         "Rector\\Reflection\\ReflectionResolver",
         "Rector\\StaticTypeMapper\\StaticTypeMapper",

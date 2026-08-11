@@ -11,6 +11,7 @@
     ],
     "require": {
         "php": "^8.5",
+        "ext-tokenizer": "*",
         "illuminate/support": "^13.0",
         "nikic/php-parser": "^5.8",
         "phpstan/phpstan": "^2.2",
@@ -54,6 +55,8 @@
         "rector": "rector process",
         "rector-lint": "rector process --dry-run",
         "mcp": "bin/mcp.sh",
+        "docs": "@php bin/readme-rules.php",
+        "docs-check": "@php bin/readme-rules-check.php",
         "bc-check": [
             "Composer\\Config::disableProcessTimeout",
             "bin/bc-check.sh"
@@ -66,12 +69,14 @@
             "@lint",
             "@rector-lint",
             "@analyse",
+            "@docs-check",
             "@coverage",
             "@bc-check"
         ],
         "fix": [
             "@rector",
-            "@format"
+            "@format",
+            "@docs"
         ]
     },
     "config": {

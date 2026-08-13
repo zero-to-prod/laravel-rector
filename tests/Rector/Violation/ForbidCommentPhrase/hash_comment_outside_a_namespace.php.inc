@@ -1,5 +1,5 @@
 <?php
 
-# @todo drop this file
+# a hack of a file
 
 $legacy = true;

@@ -8,7 +8,7 @@ use Iterator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\WithoutErrorHandler;
 
-final class ForbidTodoAnnotationRectorLeaveTodoTest extends RectorTestCase
+final class ForbidCommentPhraseRectorLeaveTodoTest extends RectorTestCase
 {
     #[WithoutErrorHandler]
     #[DataProvider('provideData')]
@@ -20,11 +20,11 @@ final class ForbidTodoAnnotationRectorLeaveTodoTest extends RectorTestCase
     /** @return Iterator<array{string}> */
     public static function provideData(): Iterator
     {
-        return self::yieldFilesFromDirectory(__DIR__.'/Fixture/ForbidTodoAnnotationLeaveTodo');
+        return self::yieldFilesFromDirectory(__DIR__.'/Fixture/ForbidCommentPhraseLeaveTodo');
     }
 
     public function provideConfigFilePath(): string
     {
-        return __DIR__.'/config/forbid_todo_annotation_leave_todo.php';
+        return __DIR__.'/config/forbid_comment_phrase_leave_todo.php';
     }
 }

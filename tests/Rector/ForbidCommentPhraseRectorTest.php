@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\WithoutErrorHandler;
 use Rector\Exception\ShouldNotHappenException;
 
-final class ForbidTodoAnnotationRectorTest extends RectorTestCase
+final class ForbidCommentPhraseRectorTest extends RectorTestCase
 {
     #[WithoutErrorHandler]
     #[DataProvider('provideData')]
@@ -20,28 +20,28 @@ final class ForbidTodoAnnotationRectorTest extends RectorTestCase
 
     #[WithoutErrorHandler]
     #[DataProvider('provideViolations')]
-    public function test_reports_a_comment_carrying_the_annotation(string $fixture, string $expectedMessage): void
+    public function test_reports_a_comment_carrying_a_configured_phrase(string $fixture, string $expectedMessage): void
     {
-        expect(fn () => $this->doTestFile(__DIR__.'/Violation/ForbidTodoAnnotation/'.$fixture))
+        expect(fn () => $this->doTestFile(__DIR__.'/Violation/ForbidCommentPhrase/'.$fixture))
             ->toThrow(ShouldNotHappenException::class, $expectedMessage);
     }
 
     /** @return Iterator<array{string}> */
     public static function provideData(): Iterator
     {
-        return self::yieldFilesFromDirectory(__DIR__.'/Fixture/ForbidTodoAnnotation');
+        return self::yieldFilesFromDirectory(__DIR__.'/Fixture/ForbidCommentPhrase');
     }
 
     /** @return Iterator<array{string, string}> */
     public static function provideViolations(): Iterator
     {
-        yield ['line_comment.php.inc', 'Comment carries a TODO annotation: "@TODO handle the empty case"'];
-        yield ['doc_comment.php.inc', 'Comment carries a TODO annotation: "@todo drop the cache"'];
-        yield ['hash_comment_outside_a_namespace.php.inc', 'Comment carries a TODO annotation: "@todo drop this file"'];
+        yield ['line_comment.php.inc', 'Comment carries the forbidden phrase hack: "A HACK until the API settles"'];
+        yield ['doc_comment.php.inc', 'Comment carries the forbidden phrase /fixme(\s|$)/i: "FIXME once the cache is gone"'];
+        yield ['hash_comment_outside_a_namespace.php.inc', 'Comment carries the forbidden phrase hack: "a hack of a file"'];
     }
 
     public function provideConfigFilePath(): string
     {
-        return __DIR__.'/config/forbid_todo_annotation.php';
+        return __DIR__.'/config/forbid_comment_phrase.php';
     }
 }

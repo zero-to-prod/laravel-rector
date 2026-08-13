@@ -42,7 +42,7 @@ php artisan vendor:publish --tag=laravel-rector-config
 - [`EnforceInvokableControllerRector`](#enforceinvokablecontrollerrector) — Controllers must be readonly and invokable, declaring __invoke and no other public method
 - [`EnforceInvokableControllerRouteRector`](#enforceinvokablecontrollerrouterector) — Routes must map to an invokable controller class, never to a method
 - [`ForbidClassUsageRector`](#forbidclassusagerector) — Statements must not name a configured class
-- [`ForbidTodoAnnotationRector`](#forbidtodoannotationrector) — Comments must not carry a TODO annotation
+- [`ForbidCommentPhraseRector`](#forbidcommentphraserector) — Comments must not carry a configured phrase
 - [`RenameParamToMatchTypeExactCaseRector`](#renameparamtomatchtypeexactcaserector) — Rename param to match class type hint exactly (PascalCase)
 
 Register the rules you want in `rector.php`:
@@ -55,7 +55,7 @@ use ZeroToProd\LaravelRector\Rector\EnforceControllerSuffixRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
 use ZeroToProd\LaravelRector\Rector\ForbidClassUsageRector;
-use ZeroToProd\LaravelRector\Rector\ForbidTodoAnnotationRector;
+use ZeroToProd\LaravelRector\Rector\ForbidCommentPhraseRector;
 use ZeroToProd\LaravelRector\Rector\RenameParamToMatchTypeExactCaseRector;
 
 return RectorConfig::configure()
@@ -71,7 +71,7 @@ return RectorConfig::configure()
         EnforceInvokableControllerRector::class,
         EnforceInvokableControllerRouteRector::class,
         ForbidClassUsageRector::class,
-        ForbidTodoAnnotationRector::class,
+        ForbidCommentPhraseRector::class,
         RenameParamToMatchTypeExactCaseRector::class,
     ]);
 ```
@@ -360,24 +360,41 @@ Configured with:
  $user = DB::table('users')->first();
 ```
 
-### `ForbidTodoAnnotationRector`
+### `ForbidCommentPhraseRector`
 
-A TODO annotation is a note that the work is not finished, left where nothing
-tracks it.
+A comment a project has decided against is a comment no file should carry: a
+note left for nobody, a slur, a ticket number the tracker no longer knows, a
+name a rewrite retired.
 
-There is nothing to rewrite it to, so every comment carrying one is reported
-as an error naming the file and line: finish the work, or record it where the
-team can see it.
+Which phrases those are is yours to name, with `phrases`. A phrase written as
+a delimited pattern, such as `/fixme/i`, is matched as a regular expression;
+every other phrase is matched as text, without regard to case. A pattern PCRE
+cannot compile is refused as the rule is configured, naming the reason, rather
+than quietly matching nothing.
 
-Every casing is caught, in a line comment, a hash comment or a docblock. The
-annotation is read from the file's comment tokens, so one written inside a
-string or a heredoc is not a violation.
+There is nothing to rewrite a phrase to, so every comment carrying one is
+reported as an error naming the phrase, the comment and the line it is written
+on.
+
+The phrases are read from the file's comment tokens, in a line comment, a hash
+comment or a docblock, so one written inside a string or a heredoc is not a
+violation.
 
 Configured with `leave_todo`, the rule reports nothing at all: the note it
 would leave is the comment it just found.
 
+Configured with:
+
+```php
+->withConfiguredRule(ForbidCommentPhraseRector::class, [
+    'phrases' => array (
+  0 => '/fixme/i',
+),
+])
+```
+
 ```diff
--// @TODO handle the empty case
+-// FIXME the empty case
 -return $items[0];
 +return $items[0] ?? null;
 ```

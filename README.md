@@ -38,6 +38,7 @@ php artisan vendor:publish --tag=laravel-rector-config
 
 - [`AddReadonlyToClassWithTraitRector`](#addreadonlytoclasswithtraitrector) — Declare a class readonly when it uses a configured trait
 - [`AddTypeToConstOnReadonlyClassRector`](#addtypetoconstonreadonlyclassrector) — Add type to constants on readonly classes regardless of final
+- [`CollapseSingleLineDocblockRector`](#collapsesinglelinedocblockrector) — Write a docblock saying one thing on one line
 - [`EnforceControllerSuffixRector`](#enforcecontrollersuffixrector) — Controllers must be named with a Controller suffix
 - [`EnforceInvokableControllerRector`](#enforceinvokablecontrollerrector) — Controllers must be readonly and invokable, declaring __invoke and no other public method
 - [`EnforceInvokableControllerRouteRector`](#enforceinvokablecontrollerrouterector) — Routes must map to an invokable controller class, never to a method
@@ -51,6 +52,7 @@ Register the rules you want in `rector.php`:
 use Rector\Config\RectorConfig;
 use ZeroToProd\LaravelRector\Rector\AddReadonlyToClassWithTraitRector;
 use ZeroToProd\LaravelRector\Rector\AddTypeToConstOnReadonlyClassRector;
+use ZeroToProd\LaravelRector\Rector\CollapseSingleLineDocblockRector;
 use ZeroToProd\LaravelRector\Rector\EnforceControllerSuffixRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
@@ -67,6 +69,7 @@ return RectorConfig::configure()
     ->withRules([
         AddReadonlyToClassWithTraitRector::class,
         AddTypeToConstOnReadonlyClassRector::class,
+        CollapseSingleLineDocblockRector::class,
         EnforceControllerSuffixRector::class,
         EnforceInvokableControllerRector::class,
         EnforceInvokableControllerRouteRector::class,
@@ -163,6 +166,43 @@ Configured with:
 +    // TODO: type this constant as string
      public const name = 'name';
  }
+```
+
+### `CollapseSingleLineDocblockRector`
+
+A docblock saying one thing is written on one line, so the three lines it used
+to take become the one line it needs.
+
+A docblock saying more than one thing is left as it is written: the moment a
+second line carries anything at all, the shape of the block is the reader's
+own, and collapsing it would be a rewrite rather than a tidy.
+
+The line is the docblock's only content, whichever line it was written on, so
+both a block opening on its own line and one opening on the content's line
+collapse the same way.
+
+```diff
+-/**
+- * @throws ReflectionException
+- */
++/** @throws ReflectionException */
+ public function handle(): void
+```
+
+Configured with:
+
+```php
+->withConfiguredRule(CollapseSingleLineDocblockRector::class, [
+    'leave_todo' => true,
+])
+```
+
+```diff
+ /**
+  * @throws ReflectionException
+  */
++// TODO: write this docblock on one line
+ public function handle(): void
 ```
 
 ### `EnforceControllerSuffixRector`

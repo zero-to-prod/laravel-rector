@@ -6,6 +6,7 @@ use Symplify\RuleDocGenerator\Contract\CodeSampleInterface;
 use Symplify\RuleDocGenerator\Contract\DocumentedRuleInterface;
 use ZeroToProd\LaravelRector\Rector\AddReadonlyToClassWithTraitRector;
 use ZeroToProd\LaravelRector\Rector\AddTypeToConstOnReadonlyClassRector;
+use ZeroToProd\LaravelRector\Rector\CollapseSingleLineDocblockRector;
 use ZeroToProd\LaravelRector\Rector\EnforceControllerSuffixRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
@@ -27,6 +28,7 @@ it('documents what it does with a before and after sample', function (Documented
     fn (): AddReadonlyToClassWithTraitRector => new AddReadonlyToClassWithTraitRector,
     // The constructor dependencies play no part in the documentation
     fn (): AddTypeToConstOnReadonlyClassRector => new ReflectionClass(AddTypeToConstOnReadonlyClassRector::class)->newInstanceWithoutConstructor(),
+    fn (): CollapseSingleLineDocblockRector => new CollapseSingleLineDocblockRector,
     fn (): EnforceControllerSuffixRector => new EnforceControllerSuffixRector,
     fn (): EnforceInvokableControllerRector => new EnforceInvokableControllerRector,
     fn (): EnforceInvokableControllerRouteRector => new EnforceInvokableControllerRouteRector,

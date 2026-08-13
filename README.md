@@ -41,6 +41,7 @@ php artisan vendor:publish --tag=laravel-rector-config
 - [`EnforceControllerSuffixRector`](#enforcecontrollersuffixrector) — Controllers must be named with a Controller suffix
 - [`EnforceInvokableControllerRector`](#enforceinvokablecontrollerrector) — Controllers must be readonly and invokable, declaring __invoke and no other public method
 - [`EnforceInvokableControllerRouteRector`](#enforceinvokablecontrollerrouterector) — Routes must map to an invokable controller class, never to a method
+- [`ForbidClassUsageRector`](#forbidclassusagerector) — Statements must not name a configured class
 - [`ForbidTodoAnnotationRector`](#forbidtodoannotationrector) — Comments must not carry a TODO annotation
 - [`RenameParamToMatchTypeExactCaseRector`](#renameparamtomatchtypeexactcaserector) — Rename param to match class type hint exactly (PascalCase)
 
@@ -53,6 +54,7 @@ use ZeroToProd\LaravelRector\Rector\AddTypeToConstOnReadonlyClassRector;
 use ZeroToProd\LaravelRector\Rector\EnforceControllerSuffixRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
+use ZeroToProd\LaravelRector\Rector\ForbidClassUsageRector;
 use ZeroToProd\LaravelRector\Rector\ForbidTodoAnnotationRector;
 use ZeroToProd\LaravelRector\Rector\RenameParamToMatchTypeExactCaseRector;
 
@@ -68,6 +70,7 @@ return RectorConfig::configure()
         EnforceControllerSuffixRector::class,
         EnforceInvokableControllerRector::class,
         EnforceInvokableControllerRouteRector::class,
+        ForbidClassUsageRector::class,
         ForbidTodoAnnotationRector::class,
         RenameParamToMatchTypeExactCaseRector::class,
     ]);
@@ -320,6 +323,41 @@ Configured with:
 ```diff
 +// TODO: Route action names __invoke. Pass the controller class itself.
  Route::get('/user', [UserShowController::class, '__invoke']);
+```
+
+### `ForbidClassUsageRector`
+
+A class a project has decided against is a class no file should name: a facade
+it is moving off, a helper a rewrite replaced, a package class it no longer
+wants reached directly.
+
+Which classes those are is yours to name, with `classes`. There is nothing to
+rewrite a forbidden class to, so the rule never changes the code: every
+statement naming one carries a comment saying so instead, and running twice
+leaves one comment rather than two.
+
+A statement names a class however PHP lets it: an import, a parent, an
+interface, an attribute, a type, a `new`, a static call. The name is read as
+resolved, so the short name an import brought in and the fully qualified one
+are the same class. A statement nested in another waits its own turn, so the
+comment lands on the line the name is written on.
+
+Configured with `leave_todo`, nothing changes: the comment is all this rule
+ever leaves.
+
+Configured with:
+
+```php
+->withConfiguredRule(ForbidClassUsageRector::class, [
+    'classes' => array (
+  0 => 'Illuminate\\Support\\Facades\\DB',
+),
+])
+```
+
+```diff
++// TODO: do not use Illuminate\Support\Facades\DB
+ $user = DB::table('users')->first();
 ```
 
 ### `ForbidTodoAnnotationRector`

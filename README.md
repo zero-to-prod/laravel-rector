@@ -44,6 +44,7 @@ php artisan vendor:publish --tag=laravel-rector-config
 - [`EnforceInvokableControllerRouteRector`](#enforceinvokablecontrollerrouterector) — Routes must map to an invokable controller class, never to a method
 - [`ForbidClassUsageRector`](#forbidclassusagerector) — Statements must not name a configured class
 - [`ForbidCommentPhraseRector`](#forbidcommentphraserector) — Comments must not carry a configured phrase
+- [`ForbidDuplicateBladeElementRector`](#forbidduplicatebladeelementrector) — Blade templates must write a configured element once
 - [`RenameParamToMatchTypeExactCaseRector`](#renameparamtomatchtypeexactcaserector) — Rename param to match class type hint exactly (PascalCase)
 
 Register the rules you want in `rector.php`:
@@ -58,6 +59,7 @@ use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
 use ZeroToProd\LaravelRector\Rector\ForbidClassUsageRector;
 use ZeroToProd\LaravelRector\Rector\ForbidCommentPhraseRector;
+use ZeroToProd\LaravelRector\Rector\ForbidDuplicateBladeElementRector;
 use ZeroToProd\LaravelRector\Rector\RenameParamToMatchTypeExactCaseRector;
 
 return RectorConfig::configure()
@@ -75,6 +77,7 @@ return RectorConfig::configure()
         EnforceInvokableControllerRouteRector::class,
         ForbidClassUsageRector::class,
         ForbidCommentPhraseRector::class,
+        ForbidDuplicateBladeElementRector::class,
         RenameParamToMatchTypeExactCaseRector::class,
     ]);
 ```
@@ -437,6 +440,45 @@ Configured with:
 -// FIXME the empty case
 -return $items[0];
 +return $items[0] ?? null;
+```
+
+### `ForbidDuplicateBladeElementRector`
+
+An element a page is allowed one of is an element a template must write once:
+a second `<title>`, a second `<h1>`, a second `<x-layout>`, each of them a
+page saying two things where the browser reads one.
+
+Which elements those are is yours to name, with `elements`. A name is written
+as the tag is, `title` or `x-layout`, and is matched the way HTML reads a tag
+name: without regard to case, and only where the whole name is written, so
+`<title>` is not found in `<titlebar>`.
+
+Only Blade templates are read, the files named `*.blade.php`, and only their
+opening tags count: a closing tag is the same element, written again. An
+element written inside a Blade comment or an HTML comment is not written on
+the page, so it is not counted.
+
+There is nothing to rewrite a second element to, so a template writing one is
+reported as an error naming the element, the number of times it is written and
+the lines it is written on.
+
+Configured with `leave_todo`, the rule reports nothing: a template renders
+what it says, and a note left in one is a note the page would carry.
+
+Configured with:
+
+```php
+->withConfiguredRule(ForbidDuplicateBladeElementRector::class, [
+    'elements' => array (
+  0 => 'title',
+),
+])
+```
+
+```diff
+-<title>@yield('title')</title>
+-<title>Dashboard</title>
++<title>@yield('title', 'Dashboard')</title>
 ```
 
 ### `RenameParamToMatchTypeExactCaseRector`

@@ -12,6 +12,7 @@ use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
 use ZeroToProd\LaravelRector\Rector\ForbidClassUsageRector;
 use ZeroToProd\LaravelRector\Rector\ForbidCommentPhraseRector;
+use ZeroToProd\LaravelRector\Rector\ForbidDuplicateBladeElementRector;
 use ZeroToProd\LaravelRector\Rector\RenameParamToMatchTypeExactCaseRector;
 
 it('documents what it does with a before and after sample', function (DocumentedRuleInterface $Rector): void {
@@ -34,5 +35,6 @@ it('documents what it does with a before and after sample', function (Documented
     fn (): EnforceInvokableControllerRouteRector => new EnforceInvokableControllerRouteRector,
     fn (): ForbidClassUsageRector => new ForbidClassUsageRector,
     fn (): ForbidCommentPhraseRector => new ForbidCommentPhraseRector,
+    fn (): ForbidDuplicateBladeElementRector => new ForbidDuplicateBladeElementRector,
     fn (): RenameParamToMatchTypeExactCaseRector => new ReflectionClass(RenameParamToMatchTypeExactCaseRector::class)->newInstanceWithoutConstructor(),
 ]);

@@ -10,6 +10,7 @@ use ZeroToProd\LaravelRector\Rector\CollapseSingleLineDocblockRector;
 use ZeroToProd\LaravelRector\Rector\EnforceControllerSuffixRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
+use ZeroToProd\LaravelRector\Rector\ForbidBladeAttributeValueRector;
 use ZeroToProd\LaravelRector\Rector\ForbidClassUsageRector;
 use ZeroToProd\LaravelRector\Rector\ForbidCommentPhraseRector;
 use ZeroToProd\LaravelRector\Rector\ForbidDuplicateBladeElementRector;
@@ -33,6 +34,7 @@ it('documents what it does with a before and after sample', function (Documented
     fn (): EnforceControllerSuffixRector => new EnforceControllerSuffixRector,
     fn (): EnforceInvokableControllerRector => new EnforceInvokableControllerRector,
     fn (): EnforceInvokableControllerRouteRector => new EnforceInvokableControllerRouteRector,
+    fn (): ForbidBladeAttributeValueRector => new ForbidBladeAttributeValueRector,
     fn (): ForbidClassUsageRector => new ForbidClassUsageRector,
     fn (): ForbidCommentPhraseRector => new ForbidCommentPhraseRector,
     fn (): ForbidDuplicateBladeElementRector => new ForbidDuplicateBladeElementRector,

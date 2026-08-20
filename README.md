@@ -42,6 +42,7 @@ php artisan vendor:publish --tag=laravel-rector-config
 - [`EnforceControllerSuffixRector`](#enforcecontrollersuffixrector) — Controllers must be named with a Controller suffix
 - [`EnforceInvokableControllerRector`](#enforceinvokablecontrollerrector) — Controllers must be readonly and invokable, declaring __invoke and no other public method
 - [`EnforceInvokableControllerRouteRector`](#enforceinvokablecontrollerrouterector) — Routes must map to an invokable controller class, never to a method
+- [`ForbidBladeAttributeValueRector`](#forbidbladeattributevaluerector) — Blade templates must not write a forbidden value in a configured attribute
 - [`ForbidClassUsageRector`](#forbidclassusagerector) — Statements must not name a configured class
 - [`ForbidCommentPhraseRector`](#forbidcommentphraserector) — Comments must not carry a configured phrase
 - [`ForbidDuplicateBladeElementRector`](#forbidduplicatebladeelementrector) — Blade templates must write a configured element once
@@ -57,6 +58,7 @@ use ZeroToProd\LaravelRector\Rector\CollapseSingleLineDocblockRector;
 use ZeroToProd\LaravelRector\Rector\EnforceControllerSuffixRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRector;
 use ZeroToProd\LaravelRector\Rector\EnforceInvokableControllerRouteRector;
+use ZeroToProd\LaravelRector\Rector\ForbidBladeAttributeValueRector;
 use ZeroToProd\LaravelRector\Rector\ForbidClassUsageRector;
 use ZeroToProd\LaravelRector\Rector\ForbidCommentPhraseRector;
 use ZeroToProd\LaravelRector\Rector\ForbidDuplicateBladeElementRector;
@@ -75,6 +77,7 @@ return RectorConfig::configure()
         EnforceControllerSuffixRector::class,
         EnforceInvokableControllerRector::class,
         EnforceInvokableControllerRouteRector::class,
+        ForbidBladeAttributeValueRector::class,
         ForbidClassUsageRector::class,
         ForbidCommentPhraseRector::class,
         ForbidDuplicateBladeElementRector::class,
@@ -366,6 +369,50 @@ Configured with:
 ```diff
 +// TODO: Route action names __invoke. Pass the controller class itself.
  Route::get('/user', [UserShowController::class, '__invoke']);
+```
+
+### `ForbidBladeAttributeValueRector`
+
+An attribute value written by hand is a value a refactoring cannot follow: a
+path typed into an `href`, a route spelled out in a form's `action`, each of
+them a link still pointing where the application no longer answers.
+
+Which values those are is yours to name, with `attributes`: a pattern the
+value must not match, keyed by the attribute it is forbidden in. A pattern
+PCRE cannot compile is refused as the rule is configured, naming the reason,
+rather than quietly matching nothing.
+
+An attribute is matched the way HTML reads its name: without regard to case,
+and only where the whole name is written, so `href` is not found in
+`data-href`, in `:href` or in `x-bind:href` — an attribute bound to an
+expression is already an expression. The value is read however it is written,
+in double quotes, in single quotes or in neither, and the pattern is matched
+against the value alone.
+
+Only Blade templates are read, the files named `*.blade.php`. A value written
+inside a Blade comment or an HTML comment is not written on the page, so it is
+not read.
+
+There is nothing to rewrite a forbidden value to, so a template writing one is
+reported as an error naming the attribute, the value, the pattern that forbids
+it and the line it is written on.
+
+Configured with `leave_todo`, the rule reports nothing: a template renders
+what it says, and a note left in one is a note the page would carry.
+
+Configured with:
+
+```php
+->withConfiguredRule(ForbidBladeAttributeValueRector::class, [
+    'attributes' => array (
+  'href' => '#^/#',
+),
+])
+```
+
+```diff
+-<a href="/home">Home</a>
++<a href="{{ route('home') }}">Home</a>
 ```
 
 ### `ForbidClassUsageRector`
